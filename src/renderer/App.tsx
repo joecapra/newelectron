@@ -36,10 +36,10 @@ const Hello = () => {
       // Console logs the reply send from main.ts
       console.log('RECEIVED BACK FROM MAIN PARSED', arg);
     });
-    window.electron.ipcRenderer.sendMessage(
-      'ipc-get-json-file',
-      selectedFolderPath
-    );
+    window.electron.ipcRenderer.sendMessage('ipc-get-json-file', {
+      folderPath: selectedFolderPath,
+      sheetPath: sheetJsonPath,
+    });
   };
 
   return (
