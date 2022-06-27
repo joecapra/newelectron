@@ -27,31 +27,29 @@ class AppUpdater {
 }
 
 let mainWindow: BrowserWindow | null = null;
+// let directoryFiles = [];
+
+let selectedDirectoryFiles = [];
 
 const getFiles = (directoryPath) => {
-  console.log('PATH===================', directoryPath);
-  fs.readdir(directoryPath + '/', (err, files) => {
-    if (err) {
-      return console.log('Unable to scan directory: ' + err);
-    }
-
-    files.forEach((file) => {
-      // Do whatever you want to do with the file
-      console.log(file);
-    });
-  });
+  // Get all files in selected directory
+  const files = fs.readdirSync(directoryPath + '/');
+  return files;
 };
 
 ipcMain.on('ipc-select-folder', async (event, arg) => {
+  // Open dialog for user to select folder
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ['openDirectory'],
   });
-  getFiles(result.filePaths);
+  // Get all the files in the selected folder and set
+  selectedDirectoryFiles = getFiles(result.filePaths + '/');
   event.reply('ipc-select-folder', result.filePaths);
 });
 
 ipcMain.on('ipc-get-json-file', async (event, dpsJsonPath) => {
   // Get and read Sheet JSON from url
+  console.log('WE FOUND THESE FILES!!!!!', selectedDirectoryFiles);
   try {
     const res = await axios.get(
       'http://localhost:10200/dps/data/16Yyf7XpMsFUl0IhAXCU_6Oh_-1Ul_OZxVeoOpz88MmE/0/*?proxy=http://localhost:10200'
