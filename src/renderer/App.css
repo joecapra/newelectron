@@ -14,9 +14,19 @@ body {
   );
   font-family: sans-serif;
   overflow-y: hidden;
+  padding: 30px;
+}
+
+.app {
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
+  gap: 30px;
+}
+
+input {
+  width: 80%;
 }
 
 button {
@@ -38,25 +48,4 @@ button:hover {
   opacity: 1;
 }
 
-li {
-  list-style: none;
-}
 
-a {
-  text-decoration: none;
-  height: fit-content;
-  width: fit-content;
-  margin: 10px;
-}
-
-a:hover {
-  opacity: 1;
-  text-decoration: none;
-}
-
-.Hello {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  margin: 20px 0;
-}

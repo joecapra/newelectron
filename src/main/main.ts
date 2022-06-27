@@ -9,11 +9,14 @@
  * `./src/main.js` using webpack. This gives us some performance wins.
  */
 import path from 'path';
-import { app, BrowserWindow, shell, ipcMain } from 'electron';
+import { app, BrowserWindow, shell, ipcMain, dialog } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import log from 'electron-log';
 import MenuBuilder from './menu';
 import { resolveHtmlPath } from './util';
+
+const fs = require('fs');
+const axios = require('axios');
 
 class AppUpdater {
   constructor() {
@@ -25,12 +28,52 @@ class AppUpdater {
 
 let mainWindow: BrowserWindow | null = null;
 
-ipcMain.on('ipc-example', async (event, arg) => {
-  const recievedData = arg;
-  // const msgTemplate = (pingPong: string) => `IPCs test: ${pingPong}`;
-  console.log('RECEIVED FROM APP=', arg);
-  // Send reply back to app.tsk
-  event.reply('ipc-example', recievedData);
+const getFiles = (directoryPath) => {
+  console.log('PATH===================', directoryPath);
+  fs.readdir(directoryPath + '/', (err, files) => {
+    if (err) {
+      return console.log('Unable to scan directory: ' + err);
+    }
+
+    files.forEach((file) => {
+      // Do whatever you want to do with the file
+      console.log(file);
+    });
+  });
+};
+
+ipcMain.on('ipc-select-folder', async (event, arg) => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openDirectory'],
+  });
+  getFiles(result.filePaths);
+  event.reply('ipc-select-folder', result.filePaths);
+});
+
+ipcMain.on('ipc-get-json-file', async (event, dpsJsonPath) => {
+  // Get and read Sheet JSON from url
+  try {
+    const res = await axios.get(
+      'http://localhost:10200/dps/data/16Yyf7XpMsFUl0IhAXCU_6Oh_-1Ul_OZxVeoOpz88MmE/0/*?proxy=http://localhost:10200'
+    );
+    // Get and read from existing DPS JSON file
+    const dpsJsonFile = dpsJsonPath + '/dps.json';
+    const dpsJsonRawData = fs.readFileSync(dpsJsonFile);
+    const currentDpsJsonObj = JSON.parse(dpsJsonRawData);
+
+    // iterate over all files in folder
+
+    // iterate over sheet json to look for any files in filename that match
+    //create or edit new json object to write back with IDs for the found filenames
+
+    // Write back to file
+    // fs.writeFileSync(jsonFile, 'ass');
+    // const response = [JSON.parse(res.data), oldJson];
+
+    event.reply('ipc-get-json-file', res.data);
+  } catch (error) {
+    event.reply('ipc-get-json-file', 'ERROR LOADING SHEET JSON');
+  }
 });
 
 if (process.env.NODE_ENV === 'production') {

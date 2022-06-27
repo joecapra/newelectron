@@ -1,26 +1,41 @@
+import { useState } from 'react';
 import { MemoryRouter as Router, Routes, Route } from 'react-router-dom';
-import icon from '../../assets/icon.svg';
 import './App.css';
 
 const Hello = () => {
-  const doSomething = () => {
-    window.electron.ipcRenderer.once('ipc-example', (arg) => {
+  const [selectedFolderPath, setSelectedFolderPath] =
+    useState('No folder selected');
+
+  const selectFolderPath = () => {
+    window.electron.ipcRenderer.once('ipc-select-folder', (arg) => {
       // eslint-disable-next-line no-console
       // Console logs the reply send from main.ts
-      console.log('RECEIVED BACK FROM MAIN', arg);
+      setSelectedFolderPath(arg);
     });
-    window.electron.ipcRenderer.sendMessage('ipc-example', 'FOLDER PATH');
+    window.electron.ipcRenderer.sendMessage('ipc-select-folder');
+  };
+
+  const doIt = () => {
+    window.electron.ipcRenderer.once('ipc-get-json-file', (arg) => {
+      // eslint-disable-next-line no-console
+      // Console logs the reply send from main.ts
+      console.log('RECEIVED BACK FROM MAIN PARSED', arg);
+    });
+    window.electron.ipcRenderer.sendMessage(
+      'ipc-get-json-file',
+      selectedFolderPath
+    );
   };
 
   return (
-    <div>
-      <div className="Hello">
-        <img width="200px" alt="icon" src={icon} />
+    <div className="app">
+      {/* <h1>{selectedFolderPath}</h1> */}
+      <div>
+        <input type="text" placeholder={selectedFolderPath} />
+        <button onClick={selectFolderPath}>BROWSE</button>
       </div>
-      <h1>electron-react-boilerplate</h1>
-      <div className="Hello">
-        <button onClick={doSomething}>DO SOMETHING</button>
-      </div>
+      <input type="text" placeholder="Sheet JSON URL" />
+      <button onClick={doIt}>DO IT</button>
     </div>
   );
 };
