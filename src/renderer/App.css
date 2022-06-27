@@ -17,6 +17,11 @@ body {
   padding: 30px;
 }
 
+.folderselect {
+  width: 80%;
+  display: flex;
+}
+
 .app {
   display: flex;
   flex-direction: column;

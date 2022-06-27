@@ -27,15 +27,6 @@ class AppUpdater {
 }
 
 let mainWindow: BrowserWindow | null = null;
-// let directoryFiles = [];
-
-let selectedDirectoryFiles = [];
-
-const getFiles = (directoryPath) => {
-  // Get all files in selected directory
-  const files = fs.readdirSync(directoryPath + '/');
-  return files;
-};
 
 ipcMain.on('ipc-select-folder', async (event, arg) => {
   // Open dialog for user to select folder
@@ -47,7 +38,16 @@ ipcMain.on('ipc-select-folder', async (event, arg) => {
   event.reply('ipc-select-folder', result.filePaths);
 });
 
+let selectedDirectoryFiles = [];
+
+const getFiles = (directoryPath) => {
+  // Get all files in selected directory
+  const files = fs.readdirSync(directoryPath + '/');
+  return files;
+};
+
 const existsInDpsJson = (rawFilename, dpsJson) => {
+  console.log('YAP DPS JSON=', dpsJson);
   // Convert json to array of its values
   const sourcesKeysArray = Object.keys(dpsJson.sources);
   const found = sourcesKeysArray.find((key) => key === rawFilename);
@@ -61,8 +61,11 @@ const getSheetJson = async () => {
     );
     return res.data;
   } catch (error) {
+    mainWindow.webContents.send(
+      'ipc-status-messages',
+      'ERROR LOADING SHEET JSON'
+    );
     return false;
-    event.reply('ipc-get-json-file', 'ERROR LOADING SHEET JSON');
   }
 };
 
@@ -71,21 +74,31 @@ const getDpsJson = async (path) => {
     const dpsJsonRawData = fs.readFileSync(path);
     return JSON.parse(dpsJsonRawData);
   } catch (error) {
-    return {};
+    const blankDpsJsonObj = { sources: {} };
+    fs.writeFileSync(path, JSON.stringify(blankDpsJsonObj));
+    mainWindow.webContents.send(
+      'ipc-status-messages',
+      'NO EXISTING DPS JSON, NEW ONE CREATED'
+    );
+    return blankDpsJsonObj;
   }
+};
+
+const sendStatusMessage = (message) => {
+  mainWindow.webContents.send('ipc-status-messages', message);
 };
 
 ipcMain.on('ipc-get-json-file', async (event, dpsJsonPath) => {
   // Get and read Sheet JSON from url
   // console.log('WE FOUND THESE FILES!!!!!', selectedDirectoryFiles);
-  const gotJson = await getSheetJson();
-  if (gotJson) {
-    console.log('GOT THE JSON', gotJson);
-  } else {
-    console.log('DID NOT GET THE JSON');
+  sendStatusMessage('DOING STUFF');
+
+  const gotSheetJson = await getSheetJson();
+  if (!gotSheetJson) {
+    sendStatusMessage('ERROR LOADING SHEET JSON');
     return;
   }
-  const sheetJsonData = gotJson;
+  const sheetJsonData = gotSheetJson;
 
   // Get and read from existing DPS JSON file
   const dpsJsonFile = dpsJsonPath + '/dps.json';
@@ -94,7 +107,7 @@ ipcMain.on('ipc-get-json-file', async (event, dpsJsonPath) => {
   // Convert sheet json to array of its values
   const sheetDataArray = Object.values(sheetJsonData);
 
-  let newSourcesObj = {};
+  // let newSourcesObj = {};
 
   // Iterate through all files in folder
   selectedDirectoryFiles.forEach((file) => {
@@ -112,7 +125,7 @@ ipcMain.on('ipc-get-json-file', async (event, dpsJsonPath) => {
         const found = existsInDpsJson(rawFilename, currentDpsJsonObj);
         if (!found) {
           // so add it to the NEW DPS json object
-          newSourcesObj[rawFilename] = {
+          currentDpsJsonObj.sources[rawFilename] = {
             rid: obj.ID,
           };
           console.log('/////////////////////////////////////////');
@@ -131,13 +144,10 @@ ipcMain.on('ipc-get-json-file', async (event, dpsJsonPath) => {
     });
   });
 
-  console.log('NEW SOURCES OBJ=======', newSourcesObj);
-
   // Write new sources back to file
-  // fs.writeFileSync(jsonFile, 'ass');
-  // const response = [JSON.parse(res.data), oldJson];
+  fs.writeFileSync(dpsJsonFile, JSON.stringify(currentDpsJsonObj));
 
-  event.reply('ipc-get-json-file', 'PROCESS COMPLETE');
+  sendStatusMessage('PROCESS COMPLETE');
 });
 
 if (process.env.NODE_ENV === 'production') {
