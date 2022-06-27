@@ -47,31 +47,97 @@ ipcMain.on('ipc-select-folder', async (event, arg) => {
   event.reply('ipc-select-folder', result.filePaths);
 });
 
-ipcMain.on('ipc-get-json-file', async (event, dpsJsonPath) => {
-  // Get and read Sheet JSON from url
-  console.log('WE FOUND THESE FILES!!!!!', selectedDirectoryFiles);
+const existsInDpsJson = (rawFilename, dpsJson) => {
+  // Convert json to array of its values
+  const sourcesKeysArray = Object.keys(dpsJson.sources);
+  const found = sourcesKeysArray.find((key) => key === rawFilename);
+  return found;
+};
+
+const getSheetJson = async () => {
   try {
     const res = await axios.get(
       'http://localhost:10200/dps/data/16Yyf7XpMsFUl0IhAXCU_6Oh_-1Ul_OZxVeoOpz88MmE/0/*?proxy=http://localhost:10200'
     );
-    // Get and read from existing DPS JSON file
-    const dpsJsonFile = dpsJsonPath + '/dps.json';
-    const dpsJsonRawData = fs.readFileSync(dpsJsonFile);
-    const currentDpsJsonObj = JSON.parse(dpsJsonRawData);
-
-    // iterate over all files in folder
-
-    // iterate over sheet json to look for any files in filename that match
-    //create or edit new json object to write back with IDs for the found filenames
-
-    // Write back to file
-    // fs.writeFileSync(jsonFile, 'ass');
-    // const response = [JSON.parse(res.data), oldJson];
-
-    event.reply('ipc-get-json-file', res.data);
+    return res.data;
   } catch (error) {
+    return false;
     event.reply('ipc-get-json-file', 'ERROR LOADING SHEET JSON');
   }
+};
+
+const getDpsJson = async (path) => {
+  try {
+    const dpsJsonRawData = fs.readFileSync(path);
+    return JSON.parse(dpsJsonRawData);
+  } catch (error) {
+    return {};
+  }
+};
+
+ipcMain.on('ipc-get-json-file', async (event, dpsJsonPath) => {
+  // Get and read Sheet JSON from url
+  // console.log('WE FOUND THESE FILES!!!!!', selectedDirectoryFiles);
+  const gotJson = await getSheetJson();
+  if (gotJson) {
+    console.log('GOT THE JSON', gotJson);
+  } else {
+    console.log('DID NOT GET THE JSON');
+    return;
+  }
+  const sheetJsonData = gotJson;
+
+  // Get and read from existing DPS JSON file
+  const dpsJsonFile = dpsJsonPath + '/dps.json';
+  const currentDpsJsonObj = await getDpsJson(dpsJsonFile);
+
+  // Convert sheet json to array of its values
+  const sheetDataArray = Object.values(sheetJsonData);
+
+  let newSourcesObj = {};
+
+  // Iterate through all files in folder
+  selectedDirectoryFiles.forEach((file) => {
+    // Strip the file extension
+    const rawFilename = file;
+    const strippedFilename = file.slice(0, -4);
+
+    // Iterate sheet data array to check if it contains a matching filename
+    sheetDataArray.forEach((obj) => {
+      if (strippedFilename === obj.Filename) {
+        // We found this file in the sheet
+
+        // Now check if its already in the existing DPS json
+        // If it is then don't touch it, if its not then Add it
+        const found = existsInDpsJson(rawFilename, currentDpsJsonObj);
+        if (!found) {
+          // so add it to the NEW DPS json object
+          newSourcesObj[rawFilename] = {
+            rid: obj.ID,
+          };
+          console.log('/////////////////////////////////////////');
+          console.log('ADDING NEW OBJ TO DPS JSON====');
+          console.log('FILENAME====', rawFilename);
+          console.log('RID====', obj.ID);
+          console.log('/////////////////////////////////////////');
+        } else {
+          console.log('/////////////////////////////////////////');
+          console.log('ALREADY EXISTS IN DPS JSON====');
+          console.log('FILENAME====', rawFilename);
+          console.log('RID====', obj.ID);
+          console.log('/////////////////////////////////////////');
+        }
+      }
+    });
+  });
+
+  console.log('NEW SOURCES OBJ=======', newSourcesObj);
+
+  // Write new sources back to file
+  // fs.writeFileSync(jsonFile, 'ass');
+  // const response = [JSON.parse(res.data), oldJson];
+
+  event.reply('ipc-get-json-file', 'PROCESS COMPLETE');
 });
 
 if (process.env.NODE_ENV === 'production') {
