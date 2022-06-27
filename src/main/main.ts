@@ -96,18 +96,15 @@ const sendStatusMessage = (message) => {
 ipcMain.on('ipc-get-json-file', async (event, args) => {
   const { folderPath, sheetPath } = args;
 
-  console.log('FOLDER PATH====================', folderPath);
-  console.log('SHEET PATH====================', sheetPath);
   // Get and read Sheet JSON from url
-  // console.log('WE FOUND THESE FILES!!!!!', selectedDirectoryFiles);
   sendStatusMessage('DOING STUFF');
 
-  const gotSheetJson = await getSheetJson(sheetPath);
-  if (!gotSheetJson) {
+  const sheetJsonResponse = await getSheetJson(sheetPath);
+  if (!sheetJsonResponse) {
     sendStatusMessage('ERROR LOADING SHEET JSON');
     return;
   }
-  const sheetJsonData = gotSheetJson;
+  const sheetJsonData = sheetJsonResponse;
 
   // Get and read from existing DPS JSON file
   const dpsJsonFile = folderPath + '/dps.json';
@@ -116,14 +113,12 @@ ipcMain.on('ipc-get-json-file', async (event, args) => {
   // Convert sheet json to array of its values
   const sheetDataArray = Object.values(sheetJsonData);
 
-  // let newSourcesObj = {};
-
   // Iterate through all files in folder
   selectedDirectoryFiles.forEach((file) => {
     // Strip the file extension
     const rawFilename = file;
     const strippedFilename = file.slice(0, -4);
-    console.log('FILE============', rawFilename);
+
     // Iterate sheet data array to check if it contains a matching filename
     sheetDataArray.forEach((obj) => {
       if (strippedFilename === obj.Filename) {
